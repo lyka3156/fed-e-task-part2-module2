@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <h1>模块化演变-基于命名空间方式的方式</h1>
+    <script src="./module-a.js"></script>
+    <script src="./module-b.js"></script>
+    <script>
+        // 解决了命名冲突问题
+        moduleA.work(); // 输出 a上班   
+        moduleB.work(); // 输出 b上班    
+        // 模块成员仍然可以被修改
+        moduleA.name = "abc";
+        moduleA.work(); // 输出 abc上班   
+    </script>
+</body>
+
+</html>

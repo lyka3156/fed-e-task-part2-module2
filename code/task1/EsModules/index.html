@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <!-- 通过给 script 添加 type = module 的属性，就可以以 ES Module 的标准执行其中的 JS 代码了 -->
+    <script type="module">
+        console.log("this is ES Module");  // 输出undefined
+    </script>
+
+    <!-- 特性1： 自动采用严格模式，忽略 "use strict" -->
+    <script type="module">
+        console.log(this);  // 输出undefined
+    </script>
+
+    <!-- 特性2： 每个 ES Module 都是运行在单独的私有作用域中 -->
+    <script type="module">
+        var age = 20;
+        console.log(age);       // 输出20
+    </script>
+    <!-- <script type="module">
+        console.log(age);       //  报错 age is not defined
+    </script> -->
+
+    <!-- 特性3：特性3：ESC 是通过 CORS 的方式请求外部 JS 模块的 -->
+    <!-- 不支持 CORS 方式的会报一个跨域的错误 -->
+    <script type="module" src="https://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+    <!-- 支持 CORS 的可以访问，下面的就不会报错 -->
+    <script type="module" src="https://unpkg.com/jquery@3.4.1/dist/jquery.min.js"></script>
+
+    <!-- 特性4: ESM 的 script 标签会延迟执行脚本 (等同于) -->
+    <script type="module">
+        // 执行会在网页渲染之后执行
+        console.log("ES Module");
+    </script>
+    <p>我是网页内容</p>
+</body>
+
+</html>

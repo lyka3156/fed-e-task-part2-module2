@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <h1>模块化演变-基于文件的划分模块的方式</h1>
+    <script src="./module-a.js"></script>
+    <script src="./module-b.js"></script>
+    <script>
+        // 命名冲突问题
+        work();
+        // 输出 module-b 上班
+
+        // 模块成员可以被修改
+        name = "abc";
+        work();
+        // 输出 abc     上班
+    </script>
+</body>
+
+</html>
