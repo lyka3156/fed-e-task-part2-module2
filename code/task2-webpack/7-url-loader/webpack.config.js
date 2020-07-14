@@ -1,7 +1,7 @@
 const path = require("path"); // node的核心模块 path
 
 module.exports = {
-  mode: "development", // development 开发模式   production 生产模式 (默认模式:会压缩js)
+  mode: "none", // development 开发模式   production 生产模式 (默认模式:会压缩js)
   entry: "./src/index.js", // 入口文件
   // 打包目录
   output: {
