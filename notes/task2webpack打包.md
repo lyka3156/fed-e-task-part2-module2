@@ -202,11 +202,20 @@ module.exports = {
 
 ### 1.1.8 常用加载器分类
 
-资源文件模块加载器
+编译转换类
 
-文件模块加载器
+- 例如 css-loader 将 js 文件 转换成 js 文件
+  ![avatar](../images/task2/css-loader.png)
 
-检查加载器
+文件操作类
+
+- 例如 file-loader 将文件拷贝到打包目录，并且导出文件访问路劲
+  ![avatar](../images/task2/file-loader.png)
+
+代码检查类
+
+- 例如 eslint 检查代码的合法性
+  ![avatar](../images/task2/eslint-loader.png)
 
 ### 1.1.9 webpack 与 es6
 
@@ -244,16 +253,243 @@ module.exports = {
 
 1.  支持 ES Modules 的 import 声明
 
+```js
+import createHeading from "./heading.js";
+import "./index.css";
+import imgSrc from "./images/1.png";
+
+// 创建header结构的html
+const heading = createHeading();
+// 创建图片
+const img = new Image();
+img.src = imgSrc;
+document.body.append(heading);
+document.body.append(img);
+```
+
 2.  支持 CommonJS 的 require 函数
+
+```js
+const createHeading = require("./heading.js").default; // 默认导出的需要使用default属性
+require("./index.css");
+const imgSrc = require("./images/1.png").default;
+
+// 创建header结构的html
+const heading = createHeading();
+// 创建图片
+const img = new Image();
+img.src = imgSrc;
+document.body.append(heading);
+document.body.append(img);
+```
 
 3.  支持 AMD 的 require / define 函数
 
+```js
+define(["./heading.js", "./images/1.png", "./index.css"], (
+  createHeading,
+  imgSrc
+) => {
+  // 创建header结构的html
+  const heading = createHeading.default();
+  // 创建图片
+  const img = new Image();
+  img.src = imgSrc.default;
+  document.body.append(heading);
+  document.body.append(img);
+});
+
+require(["./heading.js", "./images/1.png", "./index.css"], (
+  createHeading,
+  imgSrc
+) => {
+  // 创建header结构的html
+  const heading = createHeading.default();
+  // 创建图片
+  const img = new Image();
+  img.src = imgSrc.default;
+  document.body.append(heading);
+  document.body.append(img);
+});
+```
+
 4.  部分 loader 加载的资源中一些用法也会触发资源模块加载
 
-html-loader
+- 4.1 样式代码中的 @import 指令和 url 函数
+
+```css
+@import url(reset.css);
+/*css-loader 同样支持 sass/less 风格的 @import 指令*/
+/*@import 'reset.css';*/
+
+body {
+  min-height: 100vh;
+  background: #f4f8fb;
+  background-image: url(./images/background.png);
+  background-size: cover;
+}
+```
+
+@import 和 url 引入的文件模块会使用 module 对应的 rule 的加载器去执行，
+
+- 例如：@import url(reset.css) 中引入的 reset.css 文件会使用 css-loader 加载器将 css 文件转换成 js 文件
+- 例如：url(image) 引入的图片会使用 file-loader 将文件拷贝到打包目录，并且返回文件的路劲
+
+- 4.2 HTML 代码中图片标签的 src
+  webpack 不支持 html 模块，所以需要使用一个 loader 来将 html 模块转换成 js 模块, html-loader
+
+```js
+// 1. 安装html-loader
+yarn add html-loader -D
+// 2. 配置webpack
+{
+  test: /\.html$/,
+  use: {
+    loader: "html-loader",
+    // html-loader默认只加载 img:src 引入的文件资源
+    // 所以，你如果要使用a:href引用资源，就需要在这里配置
+    attributes: {
+        list: [
+          {
+            tag: "img",
+            attribute: "src",
+            type: "src",
+          },
+          {
+            tag: "a",
+            attribute: "href",
+            type: "src",
+          },
+        ],
+      }
+  },
+},
+// 3. footer.html
+<footer>
+  <img src="./images/1.png" alt="better" width="256" />
+  <!-- <a href="./images/1.png">download png</a> -->
+</footer>
+// 4. index.js
+import footerHtml from "./footer.html";
+document.write(footerHtml);
+```
+
+运行如下图所示:
+![avatar](../images/task2/html-loader1.png)
+
+![avatar](../images/task2/html-loader2.png)
 
 ### 1.1.11 webpack 核心工作原理
 
 ### 1.1.12 webpack 开发一个 loader
 
 ### 1.1.13 自动清除输出目录插件
+
+```js
+// 1. 安装 clean-webpack-plugin
+yarn add clean-webpack-plugin -D
+// 2. 配置webpack.config.js
+const { CleanWebpackPlugin } = require("clean-webpack-plugin"); // 引入清除输出目录的插件
+
+module.exports = {
+  // 插件 是在摸个时间段执行，相当于生命周期，每个插件都是一个构造函数
+  plugins: [new CleanWebpackPlugin({
+    dry:true
+  })],
+}
+```
+
+### 1.1.14 html-webpack-plugin
+
+HtmlWebpackPlugin 通过 html 模板生成 html 默认会将所有入口文件插入到生成的 html 中
+
+```js
+// 1. 安装html-webpack-plugin
+yarn add html-webpack-plugin
+// 2. 配置 webpack.config.js
+module.exports = {
+  plugins: [
+  // 生成 index.html
+  new HtmlWebpackPlugin({
+    title: "首页", // 标题        注意： 不要和html-loader混合着用，不用这个title显示不了了
+    // 添加meta
+    meta: {
+      viewport: "width=device-width",
+    },
+    template: "./src/index.html", // html模块路劲
+    filename: "index.html", // 输出名称
+  }),
+  // 生成多页面应用
+    new HtmlWebpackPlugin({
+      title: "副页面", // 标题
+      // 添加meta
+      meta: {
+        viewport: "width=device-width",
+      },
+      template: "./src/index2.html", // html模块路劲
+      filename: "index2.html", // 输出名称
+    }),
+],
+}
+// 3. index.html
+<script src="打包之后的js文件路劲"></script>
+```
+
+### 1.1.15 copy-webpack-plugin
+
+将目录拷贝到输出目录
+
+```js
+// 1. 安装copy-webpack-plugin
+yarn add copy-webpack-plugin -D
+// 2. 配置webpack.config.js
+module.exports = {
+  plugins: [
+    // 把目录拷贝到输入目录
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: "src/public",     //  输入目录
+          to: "public",     // 输出目录
+        },
+      ],
+    }),
+  ]
+}
+```
+
+### 1.1.16 webpack 开发一个 plugin
+
+### 1.1.17 ideal-develop-env
+
+### 1.1.18 watch-mode
+
+### 1.1.19 dev-server
+
+```js
+// 1. 安装插件
+yarn add webpack-dev-server -D
+// 2. 配置webpack.config.js
+
+```
+
+### 1.1.20 source-map
+
+### 1.1.21 webpack-source-map
+
+配置 source-map
+
+```js
+// 1. webpack.config.js
+module.exports = {
+  // source-map
+  devtool: {
+    devtool: "eval",
+  },
+};
+```
+
+### 1.1.22 devtool-diff
+
+```js
+```
