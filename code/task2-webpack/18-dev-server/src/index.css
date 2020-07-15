@@ -5,6 +5,6 @@
 body {
   min-height: 100vh;
   background: #f4f8fb;
-  background-image: url(./images/background.png);
+  background-image: url(./public/images/1.png);
   background-size: cover;
 }

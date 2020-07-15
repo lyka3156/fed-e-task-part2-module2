@@ -1,9 +1,5 @@
-import "./index.css";
+console.log("define-plugin");
 
-const baseUrl = "https://api.github.com";
-
-fetch(baseUrl + "/users").then((res) => {
-  console.log(res);
-});
-
-console.log(1111111);
+console.log(API_BASE_URL); // https://api.example.com
+console.log(NODE_ENV);
+console.log(BUILD_ENV);

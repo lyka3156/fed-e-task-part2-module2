@@ -63,7 +63,7 @@ module.exports = {
       meta: {
         viewport: "width=device-width",
       },
-      template: "./src/index2.html", // html模块路劲
+      template: "./src/index2.html", // html模板路劲
       filename: "index2.html", // 输出名称
     }),
   ],

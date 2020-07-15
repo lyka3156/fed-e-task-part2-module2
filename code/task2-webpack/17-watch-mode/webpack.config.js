@@ -5,7 +5,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin"); // html模板插件
 const CopyWebpackPlugin = require("copy-webpack-plugin"); // 拷贝目录插件
 
 module.exports = {
-  mode: "none", // development 开发模式   production 生产模式 (默认模式:会压缩js)
+  mode: "development", // development 开发模式   production 生产模式 (默认模式:会压缩js)
   entry: "./src/index.js", // 入口文件
   // 打包目录
   output: {
@@ -48,16 +48,6 @@ module.exports = {
   // 插件
   plugins: [
     new CleanWebpackPlugin(),
-    // HtmlWebpackPlugin 通过html模板生成html  默认会将所有入口文件插入到生成的html中
-    new HtmlWebpackPlugin({
-      title: "首页", // 标题
-      // 添加meta
-      meta: {
-        viewport: "width=device-width",
-      },
-      template: "./src/index.html", // html模块路劲
-      filename: "index.html", // 输出名称
-    }),
     // 把目录拷贝到输入目录
     new CopyWebpackPlugin({
       patterns: [
@@ -68,29 +58,10 @@ module.exports = {
       ],
     }),
   ],
-  // 配置开发服务器
-  devServer: {
-    // devServer会将打包的dist目录存到内存中，并从内存中取
-    // contentBase配置的目录不会被打包到内存中，就是直接从contentBase中取，一般静态资源配置所在目录配置在这里，减少开发服务器打包和编译的时间
-    // contentBase: path.join(__dirname, "src/public"), // 额外的目录
-    open: false, // 打开浏览器
-    port: 2080, // 端口号
-    // 配置代理服务器解决跨域问题
-    proxy: {
-      "/api": {
-        // 将带有   xxxxx/api的路劲      =>    https://api.github.com/api
-        // http://localhost:2080/api/users -> https://api.github.com/api/users
-        target: "https://api.github.com",
-        // 最后将   /api  的路劲替换成 ""
-        // http://localhost:2080/api/users -> https://api.github.com/users
-        pathRewrite: {
-          "^/api": "",
-        },
-        // 不能使用 localhost:2080 作为请求 GitHub 的主机名
-        changeOrigin: true,
-      },
-    },
+  // watch的配置
+  watchOptions: {
+    poll: 1000, // 监测修改时间(ms)
+    aggregateTimeout: 500, // 防止重复按键，500毫秒内算按一次  (节流:规定时间内最后一次为准)
+    ignored: /node_modules/, // 不检测node_modules里面的文件
   },
-  // devtool: "eval",
-  devtool: "source-map", // 编译过程中生成source-map文件
 };

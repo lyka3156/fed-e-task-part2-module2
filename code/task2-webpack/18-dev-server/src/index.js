@@ -1,9 +1,16 @@
 import "./index.css";
 
-const baseUrl = "https://api.github.com";
+// http://localhost:2080/api/users -> https://api.github.com/users
 
-fetch(baseUrl + "/users").then((res) => {
-  console.log(res);
-});
+fetch("/api/users")
+  .then((res) => res.json())
+  .then((res) => {
+    console.log(res);
+    res.forEach((item) => {
+      let p = document.createElement("p");
+      p.innerHTML = item.login;
+      document.body.appendChild(p);
+    });
+  });
 
-console.log(1111111);
+console.log(222);

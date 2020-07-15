@@ -58,31 +58,35 @@ module.exports = {
       template: "./src/index.html", // html模块路劲
       filename: "index.html", // 输出名称
     }),
-    // 把目录拷贝到输入目录
-    new CopyWebpackPlugin({
-      patterns: [
-        {
-          from: "src/public", //  输入目录
-          to: "public", // 输出目录
-        },
-      ],
-    }),
+    // 把目录拷贝到输入目录   (开发阶段最好不要使用这个插件)
+    // new CopyWebpackPlugin({
+    //   patterns: [
+    //     {
+    //       from: "src/public", //  输入目录
+    //       to: "public", // 输出目录
+    //     },
+    //   ],
+    // }),
   ],
   // 配置开发服务器
+  // devServer会将打包的dist目录存到内存中，并从内存中取
   devServer: {
-    contentBase: path.join(__dirname, "dist"),
+    // contentBase配置的目录不会被打包到内存中，就是直接从contentBase中取，一般静态资源配置所在目录配置在这里，减少开发服务器打包和编译的时间
+    contentBase: path.join(__dirname, "src/public"),
     open: false, // 打开浏览器
     port: 2080, // 端口号
-    // 代理服务器
+    // 配置代理服务器解决跨域问题
     proxy: {
       "/api": {
-        // http://localhost:8080/api/users -> https://api.github.com/api/users
+        // 将带有   xxxxx/api的路劲      =>    https://api.github.com/api
+        // http://localhost:2080/api/users -> https://api.github.com/api/users
         target: "https://api.github.com",
-        // http://localhost:8080/api/users -> https://api.github.com/users
+        // 最后将   /api  的路劲替换成 ""
+        // http://localhost:2080/api/users -> https://api.github.com/users
         pathRewrite: {
           "^/api": "",
         },
-        // 不能使用 localhost:8080 作为请求 GitHub 的主机名
+        // 不能使用 localhost:2080 作为请求 GitHub 的主机名
         changeOrigin: true,
       },
     },
