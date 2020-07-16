@@ -11,7 +11,7 @@ module.exports = {
   },
   plugins: [
     new webpack.DefinePlugin({
-      // 值要求的是一个代码片段   可以用来设置环境变量
+      // 值要求的是一个代码片段   可以用来设置环境变量      注意打包之后变量就不存在了，就只剩下引入这个变量的值了
       API_BASE_URL: JSON.stringify("https://api.example.com"),
       // process.env 命令行中设置的参数
       NODE_ENV: JSON.stringify(process.env.NODE_ENV),

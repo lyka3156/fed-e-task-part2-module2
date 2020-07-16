@@ -1,9 +1,9 @@
-import "./index.css";
+console.log("evetool的区别");
 
-const baseUrl = "https://api.github.com";
+console.log("使用es6");
 
-fetch(baseUrl + "/users").then((res) => {
-  console.log(res);
-});
+const sum = (a, b) => a + b;
 
-console.log(1111111);
+console.log(sum(1, 2));
+
+console.log("evetool结束");

@@ -66,6 +66,10 @@ module.exports = {
 
 ### 1.1.2 webpack 工作模式
 
+mode: production 生产模式下，自动优化打包结果
+mode: development 开发模式下，自动优化打包速度，添加一些调试过程中的辅助；
+mode: none 模式下，运行最原始的打包，不做任何额外处理;
+
 ```js
 // 1. 配置文件方式
 module.exports = {
@@ -500,6 +504,45 @@ Loader 机制是 Wepback 的核心
 
 ### 1.1.12 webpack 开发一个 loader
 
+以创建一个解析 markdown 文件的 loader
+
+- 默认 webpack 只识别 js 模块，所以我们要写一个 loader 去将 markdown 文件转换成 js 模块
+
+```js
+// 1. 自定义解析markdown文件的loader
+// 1.1 loader是一个函数，这个函数接受一个source源码代码的参数，并且返回对源代码操作之后的值
+// 1.2 安装 marked 插件用来解析 markdown文件
+yarn add marked -D
+// markdown-loader.js
+module.exports = (sources) => {
+  // 这个sources
+  console.log("自定义loader");
+  console.log("源代码内容：", sources);
+
+  return sources;
+};
+// 1.2 在webpack种配置loader
+const path = require("path"); // node的核心模块 path
+module.exports = {
+  mode: "development", // development 开发模式   production 生产模式 (默认模式:会压缩js)
+  entry: "./src/index.js", // 入口文件
+  // 打包目录
+  output: {
+    path: path.resolve(__dirname, "dist"), // 绝对路劲
+    filename: "index.js", // 打包之后的文件名称
+  },
+  module: {
+    rules: [
+      // 使用markdown-loader去解析md文件
+      {
+        test: /\.md$/,
+        use: ["./loaders/markdown-loader"],
+      },
+    ],
+  },
+};
+```
+
 ### 1.1.13 webpack 插件
 
 plugin: 增强 webpack 自动化能力
@@ -833,7 +876,17 @@ webpack 支持 12 种不同的 source-map 方式
 
 ### 1.1.21 devtool-diff
 
+不同 devtool 模式的区别
+
 ```js
+// 1.安装模块
+yarn add webpack webpack-cli babel-loader @babel/core @babel/preset-env html-webpack-plugin -D
+
+// 2. 配置webpack.config.js
+const path = require("path"); // node的核心模块 path
+const HtmlWebpackPlugin = require("html-webpack-plugin"); // html模板插件
+
+// devtool的12种模块的差别
 const allModes = [
   "eval",
   "cheap-eval-source-map",
@@ -848,6 +901,40 @@ const allModes = [
   "hidden-source-map",
   "nosources-source-map",
 ];
+
+// 遍历12种模式生成12个devtool模式的配置
+module.exports = allModes.map((item) => {
+  return {
+    mode: "none", // 不使用任何模式
+    devtool: item,
+    entry: "./src/index.js",
+    output: {
+      path: path.join(__dirname, "dist"),
+      filename: `js/${item}.js`,
+    },
+    plugins: [
+      new HtmlWebpackPlugin({
+        filename: `${item}.html`,
+      }),
+    ],
+    module: {
+      rules: [
+        {
+          test: "/.js$/",
+          use: {
+            loader: "babel-loader", // 使用babel-loader
+            options: {
+              // @babel/preset-env 插件的集合  包含所有es6+的特性
+              presets: ["@babel/preset-env"],
+            },
+          },
+        },
+      ],
+    },
+  };
+});
+// 3. 启动webpack 打包
+yarn webpack
 ```
 
 ### 1.1.22 live-reloading-issue
