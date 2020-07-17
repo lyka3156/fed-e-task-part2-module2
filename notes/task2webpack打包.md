@@ -511,17 +511,25 @@ Loader 机制是 Wepback 的核心
 ```js
 // 1. 自定义解析markdown文件的loader
 // 1.1 loader是一个函数，这个函数接受一个source源码代码的参数，并且返回对源代码操作之后的值
+// markdown-loader.js
 // 1.2 安装 marked 插件用来解析 markdown文件
 yarn add marked -D
-// markdown-loader.js
+// loader是一个函数，这个函数接受一个source源码代码的参数，并且返回对源代码操作之后的值
+const marked = require("marked"); // 将markdown文件的解析成html字符串的插件
+// 这个sources就是md文件导出的内容                (# 自定义一个解析 md 文件的 loader)
 module.exports = (sources) => {
-  // 这个sources
   console.log("自定义loader");
   console.log("源代码内容：", sources);
-
-  return sources;
+  // 1. 我们需要将md文件的内容转换成js支持的语法
+  const content = marked(sources); // 通过marked将markdown文件转换成html字符串
+  console.log(content);
+  return content; // 将html传递给下一个loader去解析
+  //   return `module.exports = ${JSON.stringify(sources)}`;
+  //   return `export default = ${JSON.stringify(sources)}`;
+  return JSON.stringify(content);
 };
-// 1.2 在webpack种配置loader
+// 2 在webpack种配置loader
+// webpack.config.js
 const path = require("path"); // node的核心模块 path
 module.exports = {
   mode: "development", // development 开发模式   production 生产模式 (默认模式:会压缩js)
@@ -533,14 +541,27 @@ module.exports = {
   },
   module: {
     rules: [
-      // 使用markdown-loader去解析md文件
       {
         test: /\.md$/,
-        use: ["./loaders/markdown-loader"],
+        // 将markdown-loader把md文件转换成html字符串，然后将html字符串交给html-loader去处理,html-loader会将html转换成js模块导出
+        use: ["html-loader", "./loaders/markdown-loader"],
       },
     ],
   },
 };
+// 3. 运行 yarn webpack   效果如下
+// 3.1 打包之前
+// index.js
+import note from "./note.md";
+console.log(note);
+
+// 3.2 打包过程
+// 3.2.1 markdown-loader 将 note.md 文件的内容转换成html字符串
+// 使用了marked插件转换
+// 3.2.2 html-loader 将 html 字符串转换成js模块导出
+
+// 3.3 打包之后的结果
+eval("// Module\nvar code = \"<h1 id=\\\"自定义一个解析-md-文件的-loader\\\">自定义一个解析 md 文件的 loader</h1>\\n\";\n// Exports\nmodule.exports = code;\n\n//# sourceURL=webpack:///./src/note.md?");
 ```
 
 ### 1.1.13 webpack 插件
@@ -941,7 +962,30 @@ yarn webpack
 
 ### 1.1.23 hmr-experience
 
-### 1.1.24 webpack-hmr
+### 1.1.24 webpack-hmr 模块热更新(热替换)
+
+在开发中使用 devServer 启动开发服务器，当我们改变 css 和 js 会刷新打包刷新浏览器，实现实时编译，这是它的特性。也会有如下几个弊端
+
+- 项目依赖的模块多，我们只改了一个小模块，它打包了所有模块。减低了开发的效率
+- 每次打包它都会刷新页面，无法保存页面的实时数据，例如：编辑器
+
+为了解决上面的问题，webpack 提供了模块热更新的功能 (webpack 最大特色之一)
+
+- 只会重新编译改的那个模块，并不会打包编译所有模块
+- 页面不会刷新，只会替换更新过的内容
+
+设置 webpack 的模块热更新: 如下步骤所示
+
+```js
+// webpack.config.js
+// 1. 在devServer中开启热更新
+module.exports = {
+  // 配置开发服务器
+  devServer: {
+    hot: true, // 开启热更新模块
+  },
+};
+```
 
 ### 1.1.25 production-config
 

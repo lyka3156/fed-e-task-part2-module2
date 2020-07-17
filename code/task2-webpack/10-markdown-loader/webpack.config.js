@@ -12,7 +12,8 @@ module.exports = {
     rules: [
       {
         test: /\.md$/,
-        use: ["./loaders/markdown-loader"],
+        // 将markdown-loader把md文件转换成html字符串，然后将html字符串交给html-loader去处理
+        use: ["html-loader", "./loaders/markdown-loader"],
       },
     ],
   },
