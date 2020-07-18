@@ -1,9 +1,13 @@
 import "./index.css";
+import background from "./better.png";
+import createEle from "./createEle.js";
 
-const baseUrl = "https://api.github.com";
+console.log("devServer自动刷新导致的页面状态丢失");
 
-fetch(baseUrl + "/users").then((res) => {
-  console.log(res);
-});
+let ele = createEle();
+document.body.appendChild(ele);
 
-console.log(1111111);
+const img = new Image();
+img.src = background;
+document.body.appendChild(img);
+

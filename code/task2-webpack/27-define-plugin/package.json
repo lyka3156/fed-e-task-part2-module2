@@ -1,5 +1,5 @@
 {
-  "name": "20-webpack-source-map",
+  "name": "27-define-plugin",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -9,7 +9,6 @@
     "webpack-cli": "^3.3.12"
   },
   "scripts": {
-    "build": "cross-env NODE_ENV=build BUILD_ENV=sit webpack",
-    "build1": "webpack --NODE_ENV build & --BUILD_ENV sit "
+    "build": "cross-env NODE_ENV=build BUILD_ENV=sit webpack"
   }
 }

@@ -1,9 +1,5 @@
-import "./index.css";
+import { add } from "./common";
 
-const baseUrl = "https://api.github.com";
+// import { add } from "./common"; 这种方式引入 会将common.js中未用到的代码剔除掉
 
-fetch(baseUrl + "/users").then((res) => {
-  console.log(res);
-});
-
-console.log(1111111);
+console.log(add(1, 2));

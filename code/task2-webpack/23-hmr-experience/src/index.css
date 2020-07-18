@@ -1,10 +1,22 @@
-@import url(reset.css);
-/*css-loader 同样支持 sass/less 风格的 @import 指令*/
-/*@import 'reset.css';*/
+html {
+  background-color: #f4f8fb;
+}
 
 body {
-  min-height: 100vh;
-  background: #f4f8fb;
-  background-image: url(./images/background.png);
-  background-size: cover;
+  position: relative;
+  margin: 30px auto;
+  padding: 50px 40px;
+  max-width: 500px;
+  min-height: 600px;
+  background-color: #fff;
+  box-shadow: 0 0 5px #e0e0e0;
+}
+
+img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0.2;
+  z-index: 0;
 }

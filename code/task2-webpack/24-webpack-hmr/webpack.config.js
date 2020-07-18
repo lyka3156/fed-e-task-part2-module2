@@ -51,11 +51,12 @@ module.exports = {
       template: "./src/index.html", // html模块路劲
       filename: "index.html", // 输出名称
     }),
-    // new webpack.HotModuleReplacementPlugin(),
+    new webpack.HotModuleReplacementPlugin()
   ],
   // 配置开发服务器
   devServer: {
     hot: true,
+    // hotOnly: true
   },
   // source-map eval
   devtool: "source-map",

@@ -2,10 +2,10 @@ const path = require("path"); // node的核心模块 path
 
 const { CleanWebpackPlugin } = require("clean-webpack-plugin"); // 引入清除输出目录的插件
 const HtmlWebpackPlugin = require("html-webpack-plugin"); // html模板插件
-const CopyWebpackPlugin = require("copy-webpack-plugin"); // 拷贝目录插件
+const webpack = require("webpack");
 
 module.exports = {
-  mode: "development", // development 开发模式   production 生产模式 (默认模式:会压缩js)
+  mode: "none", // development 开发模式   production 生产模式 (默认模式:会压缩js)   none 源代码模式
   entry: "./src/index.js", // 入口文件
   // 打包目录
   output: {
@@ -34,14 +34,7 @@ module.exports = {
       // 匹配图片资源，通过file-loader将图片拷贝到打包目录中
       {
         test: /\.(png|svg|jpg|gif|pdf)$/,
-        use: [
-          {
-            loader: "url-loader",
-            options: {
-              limit: 10 * 1024, // 10 kb 以下使用 base64
-            },
-          },
-        ],
+        use: ["file-loader"],
       },
     ],
   },
@@ -58,37 +51,10 @@ module.exports = {
       template: "./src/index.html", // html模块路劲
       filename: "index.html", // 输出名称
     }),
-    // 把目录拷贝到输入目录
-    new CopyWebpackPlugin({
-      patterns: [
-        {
-          from: "src/public", //  输入目录
-          to: "public", // 输出目录
-        },
-      ],
-    }),
   ],
   // 配置开发服务器
   devServer: {
-    contentBase: path.join(__dirname, "dist"),
-    open: false, // 打开浏览器
-    port: 2080, // 端口号
-    // 代理服务器
-    proxy: {
-      "/api": {
-        // http://localhost:8080/api/users -> https://api.github.com/api/users
-        target: "https://api.github.com",
-        // http://localhost:8080/api/users -> https://api.github.com/users
-        pathRewrite: {
-          "^/api": "",
-        },
-        // 不能使用 localhost:8080 作为请求 GitHub 的主机名
-        changeOrigin: true,
-      },
-    },
   },
-  // source-map
-  devtool: {
-    devtool: "eval",
-  },
+  // source-map eval
+  devtool: "eval",
 };

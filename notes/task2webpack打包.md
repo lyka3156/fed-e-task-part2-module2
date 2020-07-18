@@ -504,9 +504,16 @@ Loader 机制是 Wepback 的核心
 
 ### 1.1.12 webpack 开发一个 loader
 
-以创建一个解析 markdown 文件的 loader
+以创建一个解析 markdown 文件的 loader(加载器) 为例
 
-- 默认 webpack 只识别 js 模块，所以我们要写一个 loader 去将 markdown 文件转换成 js 模块
+- 默认 webpack 只识别 js 模块，所以我们要写一个 loader 去将 markdown 文件转换成导出 html 字符串的js模块
+
+markdown-loader分析图：
+
+![avatar](../images/task2/markdown-loader.png)
+
+
+实现markdown-loader的代码如下：
 
 ```js
 // 1. 自定义解析markdown文件的loader
@@ -526,6 +533,7 @@ module.exports = (sources) => {
   return content; // 将html传递给下一个loader去解析
   //   return `module.exports = ${JSON.stringify(sources)}`;
   //   return `export default = ${JSON.stringify(sources)}`;
+  // 这里使用JSON.stringfy解决特殊字符转义错误
   return JSON.stringify(content);
 };
 // 2 在webpack种配置loader
@@ -563,6 +571,11 @@ console.log(note);
 // 3.3 打包之后的结果
 eval("// Module\nvar code = \"<h1 id=\\\"自定义一个解析-md-文件的-loader\\\">自定义一个解析 md 文件的 loader</h1>\\n\";\n// Exports\nmodule.exports = code;\n\n//# sourceURL=webpack:///./src/note.md?");
 ```
+
+总结：
+- Loader 负责资源文件从输入到输出的转换   (管道概念)
+- 对于同一个资源可以依次使用多个 Loader     (css-loader -> style-loader)
+
 
 ### 1.1.13 webpack 插件
 
@@ -662,6 +675,59 @@ module.exports = {
 ```
 
 ### 1.1.16 webpack 开发一个 plugin
+相比于 Loader, Plugin 拥有更宽的能力范围,因为loader只在加载模块的环节执行去工作，而plugin工作范围几乎可以触及webpack的每一个环节。
+
+wepbakc 的是通过钩子机制实现的。
+- webpack在工作的时候会有很多环节，为了便于插件的扩展，webpack几乎给每个环节都埋下了一个钩子，那这样的话我们在开发插件的时候就可以通过往这些不同的节点上挂载不同的任务就可以轻松扩展webpack的能力，[webpack的钩子](https://webpack.js.org/api/compiler-hooks)
+
+
+plugin 必须是一个函数或者是一个包含 apply 方法的对象
+
+实现一个plugin将打包之后的js文件的注释删除掉
+
+``` js
+// 1.定义plugin
+// 自定义插件
+class MyPlugin {
+  // options就是plugin钩子函数的实例参数
+  constructor(options) {
+    console.log("自定义插件构造函数options");
+  }
+
+  // compiler  配置信息的对象
+  apply(compiler) {
+    // 第一个参数是插件名称
+    // 第二个参数compilation => 可以理解为此次打包的上下文
+    compiler.hooks.emit.tap('MyPlugin', compilation => {
+      // compilation => 可以理解为此次打包的上下文
+      // assets 打包之后的源文件对象 main_fd12bf.js: {}
+      // options webpack.config.js的配置信息
+      for (const name in compilation.assets) {
+        // 只解析js文件
+        if (name.endsWith('.js')) {
+          // key是name(文件名称)    value是文件信息，例如 source返回源文件内容的函数，size返回源文件的大小的函数
+          const contents = compilation.assets[name].source()  // 获取源文件内容
+          const withoutComments = contents.replace(/\/\*\*+\*\//g, '')  // 替换打包之后的开头注释
+          // 将新的内容替换之前的内容
+          compilation.assets[name] = {
+            source: () => withoutComments,
+            size: () => withoutComments.length
+          }
+        }
+      }
+    })
+  }
+}
+// 2. 使用插件
+// webpack.config.js
+module.exports = {
+  plugins: [
+     new MyPlugin()
+  ]
+}
+```
+总结：
+- webpack 的 plugin 是通过在生命周期的钩子中挂载函数实现扩展    (ast语法树)
 
 ### 1.1.17 开发体验问题
 
@@ -897,6 +963,10 @@ webpack 支持 12 种不同的 source-map 方式
 
 ### 1.1.21 devtool-diff
 
+以下是12中devtool模式的对比表
+
+ ![avatar](../images/task2/devtool-12mode.png)
+
 不同 devtool 模式的区别
 
 ```js
@@ -958,50 +1028,417 @@ module.exports = allModes.map((item) => {
 yarn webpack
 ```
 
+![avatar](../images/task2/devtool-12mode-diff1.png)
+
+总结：
+- eval模式：  使用eval执行模块代码 （代码执行在虚拟机的环境中）
+  - 通过//# sourceURL=webpack:///./src/index.js?注释指定他所在环境，意味着可以通过sourceURL改变我们通过eval执行代码所处的环境的名称码，其实他还是运行在虚拟中，只是它告诉执行引擎我这段代码所处的文件路劲，这只是一个表示而已
+  - 在这种模式下，他会将我们每个所转换过后的代码都放在eval函数当中去执行，并且在eval最后通过sourceURL去说明所对应的文件路劲，那这种的话浏览器在通过eval去执行这段代码的时候知道这段代码的源代码是哪个文件。从而去实现我们定位错误所出现的文件，只能定位文件。
+  - 这种模式下，它不会去生成source-map文件，它跟source-map没有太大的关系，它的构建速度是最快的。
+  - 它的效果很简单，只能定位源代码文件的名称，而不知道具体的行列信息
+- cheap模式: Source-Map 是否包含行信息
+- module模式： 能够得到 Loader 处理之前的源代码,  不配置module是loader处理之后的代码   
+- source-map模式：  是将源代码生成一个物理文件
+- inline-source-map模式：  是将source-map以dataURLs的方式嵌入到我们代码当中  (最不可能用到的)
+- hidden-source-map模式：  在开发工具中是看不到source-map效果的，但是回到开发工具当中它确实生成了source-map文件，(跟jquery一样,开发第三方工具包的时候用)
+- nosources-source-map模式：能看到错误出现的位置，但是我们点击这个错误信息进去是看不到源代码的，指的是没有源代码，同样给我们提供了行列信息。这为了在生产环境中不暴露源代码的情况。
+
+选择source-map模式
+- 开发模式
+  - cheap-module-eval-source-map
+    - cheap 只定位行就够了：  我的代码每行不会超过 80 个字符    
+    - module:  我的代码经过 Loader 转换过后的差异较大
+    - 首次打包速度慢无所谓，重写打包相对较快    (开发的时候大部分使用devServer)
+- 生产模式
+  - none  不生成source-map
+    - source map 会暴露源代码
+    - 调试是开发阶段的事情
+  - nosources-source-map    如果你对你的代码没有信心的话
+    - 出现错误的时候可以找到源代码的位置，但是不会向外暴露源代码的内容
+
+
 ### 1.1.22 live-reloading-issue
+使用devServer开发项目 提供对开发者友好的开发服务器
+
+弊端：
+- 每次编译重新打包的时候，页面刷新，无法保存页面中的状态  （例如：编译器）
+
+解决办法
+- 办法1：代码中写死编译器的内容
+- 办法2：额外代码实现刷新前保存，刷新后读取 
+
+上述的办法，就是有洞补洞，并不能根治页面刷新导致的页面状态丢失的问题，而且这些方法都需要我们编写些跟我们业务本身无关的代码。
+
+问题核心：自动刷新导致的页面状态丢失
+
+更好的解决办法： 
+- 页面不刷新的前提下，模块也可以及时更新
 
 ### 1.1.23 hmr-experience
 
+hmr : Hot Module Replacement 模块热替换/热更新
+
+热拔插： 在一个正在运行的机器上随时插拔设备，机器的运行状态不会受插拔设备的影响，而且我们插上的设备可以立即工作。例如：电脑上的USB端口可以热拔插的
+
+模块热替换的热和热拔插是一个道理，运行过程中的即时变化
+
+
+
 ### 1.1.24 webpack-hmr 模块热更新(热替换)
+为了解决devServer带来的自动刷新导致的页面状态丢失，webpack 提供了模块热更新的功能 (webpack 最大特色之一)
 
-在开发中使用 devServer 启动开发服务器，当我们改变 css 和 js 会刷新打包刷新浏览器，实现实时编译，这是它的特性。也会有如下几个弊端
+webpack的热替换
+- 指的是引用过程中实时替换莫个模块
+- 应用运行状态不受影响
 
-- 项目依赖的模块多，我们只改了一个小模块，它打包了所有模块。减低了开发的效率
-- 每次打包它都会刷新页面，无法保存页面的实时数据，例如：编辑器
+热替换只将修改的模块实时替换至应用中，解决了自动刷新导致的页面状态丢失
 
-为了解决上面的问题，webpack 提供了模块热更新的功能 (webpack 最大特色之一)
+HMR 是 Webpack 中最强大的功能之一
+- 极大程度的提高了开发者的工作效率
 
-- 只会重新编译改的那个模块，并不会打包编译所有模块
-- 页面不会刷新，只会替换更新过的内容
-
-设置 webpack 的模块热更新: 如下步骤所示
-
-```js
-// webpack.config.js
+Webpack 开启 HMR
+``` js
 // 1. 在devServer中开启热更新
 module.exports = {
   // 配置开发服务器
   devServer: {
     hot: true, // 开启热更新模块
   },
+  plugins: [
+    new require("webpack").HotModuleReplacementPlugin()
+  ]
 };
+// 1.2 修改对应的模块看会不会热替换模块
+// 1.2.1) 修改css模块: style-loader 内部自动处理更新样式，所以不需要手动处理样式模块
+
+// 1.2.2) 修改js模块  页面自动刷新了，没有热替换的功能
+// 使用 HMR APIs  去手动处理模块更新过后的热替换
+import "./index.css";
+import background from "./better.png";
+import createEle from "./createEle.js";
+
+console.log("devServer自动刷新导致的页面状态丢失");
+
+let ele = createEle();
+document.body.appendChild(ele);
+
+const img = new Image();
+img.src = background;
+document.body.appendChild(img);
+
+// ================================================================
+// HMR 手动处理模块热更新
+// 不用担心这些代码在生产环境冗余的问题，因为通过 webpack 打包后，
+// 这些代码全部会被移除，这些只是开发阶段用到
+if (module.hot) {
+    console.log("启动了热更新功能 使用 HMR APIs 手动处理模块的热更新");
+    let hotEditor = ele
+    // 这个只针对createEle.js模块
+    module.hot.accept('./createEle.js', () => {
+        // 当 editor.js 更新，自动执行此函数
+        // 1. 临时记录编辑器内容
+        const value = hotEditor.innerHTML
+        // 2. 移除更新前的元素
+        document.body.removeChild(hotEditor)
+        // 3. 创建新的编辑器
+        //    此时 createEle 已经是更新过后的函数了
+        hotEditor = createEle()
+        // 4 还原编辑器内容
+        hotEditor.innerHTML = value
+        // 5 追加到页面
+        document.body.appendChild(hotEditor)
+    })
+}
+
+
+// 1.2.3) 修改图片
+module.hot && (module.hot.accept('./better.png', () => {
+      // 当 better.png 更新后执行
+      // 重写设置 src 会触发图片元素重新加载，从而局部更新图片
+      img.src = background
+}));
+
+```
+综上所得：
+- Webpack 中的 HMR 并不可以开箱即用
+- Webpack 中的 HMR 需要手动处理模块热替换逻辑
+
+问题1： 为什么样式文件的热更新开箱即用？
+- style-loader 内部自动处理更新样式，所以不需要手动处理样式模块
+
+![avatar](../images/task2/HMR1.png)
+
+问题2：凭什么样式可以自动处理？脚本文件需要我们手动处理了？
+- 因为样式模块更新之后只要把更新过后的css即时替换到页面当中它就可以覆盖掉之前的样式。从而实现样式文件的更新。
+- 而我们所编写的js模块，他是没有任何规律的，因为你可能在模块中导出的是一个对象，有可能导出的是一个字符串，还有可能导出的是一个函数，那我们对导出的成员的使用各不相同的，所以说webpack对这些毫无规律的js模块他就根本不知道如何去处理你更新之后的模块，那就没有办法帮你实现一个通用型的模块替换方案。
+  
+问题3： 我们项目没有手动处理，JS照样可以热替换
+- 这是因为你使用了莫个框架
+- 框架下的开发，每种文件都是有规律的
+- 通过脚手架创建的项目内部都集成了HMR方案
+
+总结：我们需要手动处理 JS 模块更新后的热替换
+
+
+Webpack HMR 注意事项：
+1. 处理HMR的代码报错会导致自动刷新
+    > 使用hot的方式，如果热替换失败，那他就会自动回退去使用自动刷新这样的一个功能，而hotOnly不会使用自动刷新。
+```js
+module.exports = {
+  devServer:{
+    // hot: true,
+    hotOnly: true
+  }
+}
+```
+2. 没启用HMR的情况下，HMR API 报错
+``` js
+// 在这里判断下就可以了
+if(module.hot){
+  // 不用担心这些代码在生产环境冗余的问题，因为通过 webpack 打包后，
+  // 这些代码全部会被移除，这些只是开发阶段用到
+}
 ```
 
 ### 1.1.25 production-config
+生产环境和开发环境有很大的差异
+- 生产环境注重运行效率      更小量，更高效的代码去完成业务功能。
+- 开发环境注重开发效率    
+webpack 建议我们为不同的工作环境创建不同的配置，以便于我们打包的结果使用于不同的环境。
+
+
+不同环境下的配置
+1. 配置文件根据环境不同导出不同配置
+``` js
+// 1. webpack.config.js 中的配置
+const path = require("path"); // node的核心模块 path
+
+const { CleanWebpackPlugin } = require("clean-webpack-plugin"); // 引入清除输出目录的插件
+const HtmlWebpackPlugin = require("html-webpack-plugin"); // html模板插件
+const CopyWebpackPlugin = require("copy-webpack-plugin"); // 用来拷贝静态资源目录
+const webpack = require("webpack");
+
+// 1. 配置文件根据环境不同导出不同配置
+// env 运行cli传递的环境参数
+// argv 运行cli传递的所有参数
+module.exports = (env, argv) => {
+  // 1.1 开发环境的配置
+  const devConfig = {
+    mode: "none", // development 开发模式   production 生产模式 (默认模式:会压缩js)   none 源代码模式
+    entry: "./src/index.js", // 入口文件
+    // 打包目录
+    output: {
+      path: path.resolve(__dirname, "dist"), // 绝对路劲
+      filename: "index.js", // 打包之后的文件名称
+      // publicPath: "dist/", // 设置加载资源模块的公共路劲(前缀路劲)
+    },
+    // 模块
+    module: {
+      rules: [
+        {
+          test: /\.js$/,
+          use: {
+            loader: "babel-loader",
+            options: {
+              presets: ["@babel/preset-env"],
+            },
+          },
+        },
+
+        // 匹配 css 文件，并通过css-loader模块转换成js模块
+        {
+          test: /\.css$/,
+          use: ["style-loader", "css-loader"],
+        },
+        // 匹配图片资源，通过file-loader将图片拷贝到打包目录中
+        {
+          test: /\.(png|svg|jpg|gif|pdf)$/,
+          use: ["file-loader"],
+        },
+      ],
+    },
+    // 插件
+    plugins: [
+      // HtmlWebpackPlugin 通过html模板生成html  默认会将所有入口文件插入到生成的html中
+      new HtmlWebpackPlugin({
+        title: "首页", // 标题
+        // 添加meta
+        meta: {
+          viewport: "width=device-width",
+        },
+        template: "./src/index.html", // html模块路劲
+        filename: "index.html", // 输出名称
+      }),
+      new webpack.HotModuleReplacementPlugin()
+    ],
+    // 配置开发服务器
+    devServer: {
+      hot: true,
+      // hotOnly: true
+    },
+    // source-map eval
+    devtool: "source-map",
+  };
+
+  // 1.2 生产环境的配置
+  if (env === "production") {
+    devConfig.mode = "production";    // 生产环境mode
+    devConfig.devtool = false;   // 禁用掉source map
+    devConfig.plugins = [
+      ...devConfig.plugins,
+      new CleanWebpackPlugin(),
+      // 开发环境中，在devServer中的contentBase中配置静态目录public，
+      // 开发的时候不参与打包，提高编译速度，
+      // 生产环境时使用此插件拷贝静态资源目录到打包目录
+      new CopyWebpackPlugin({
+        patterns: [
+          {
+            from: "src/public", //  输入目录
+            to: "public", // 输出目录
+          },
+        ],
+      })
+    ]
+  }
+  return devConfig;
+}
+// 2. package.json中的配置
+"scripts": {
+  "build": "webpack",   // 开发环境模式的打包
+  "build-pro": "webpack --env production",  // 生产环境模式打包
+  "dev": "webpack-dev-server"     // 开发环境
+}
+```
+
+2. 一个环境对应一个配置文件   (多配置方式)
+- 一个公共的配置  (开发，生产都需要的)
+- 一个开发独有的配置
+- 一个生产独有的配置
+- 具体配置如下代码 1.1.26 merge-config
+
 
 ### 1.1.26 merge-config
+使用merge-config配置一个环境对应一个配置文件
+``` js
+// 1. webpack.common.js
+const path = require("path"); // node的核心模块 path
+const HtmlWebpackPlugin = require("html-webpack-plugin"); // html模板插件
+// 1. webpack的公共配置
+module.exports = {
+  entry: "./src/index.js", // 入口文件
+  // 打包目录
+  output: {
+    path: path.resolve(__dirname, "dist"), // 绝对路劲
+    filename: "index.js", // 打包之后的文件名称
+    // publicPath: "dist/", // 设置加载资源模块的公共路劲(前缀路劲)
+  },
+  // 模块
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        use: {
+          loader: "babel-loader",
+          options: {
+            presets: ["@babel/preset-env"],
+          },
+        },
+      },
 
-### 1.1.27 define-plugin
+      // 匹配 css 文件，并通过css-loader模块转换成js模块
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"],
+      },
+      // 匹配图片资源，通过file-loader将图片拷贝到打包目录中
+      {
+        test: /\.(png|svg|jpg|gif|pdf)$/,
+        use: ["file-loader"],
+      },
+    ],
+  },
+  // 插件
+  plugins: [
+    // HtmlWebpackPlugin 通过html模板生成html  默认会将所有入口文件插入到生成的html中
+    new HtmlWebpackPlugin({
+      title: "首页", // 标题
+      // 添加meta
+      meta: {
+        viewport: "width=device-width",
+      },
+      template: "./src/index.html", // html模块路劲
+      filename: "index.html", // 输出名称
+    }),
+  ],
+};
 
+// 2. webpack.dev.js
+const common = require("./webpack.common"); // 导入公共配置
+const webpack = require("webpack"); // 引入webpack插件
+const { merge } = require("webpack-merge"); // 合并webpack配置
+// 2. webpack的开发环境配置
+// 在这里使用object.assign({},common,{})  不合适，他会把之前的plugins会覆盖掉
+module.exports = merge(common, {
+  mode: "none",
+  devtool: "source-map",
+  // 配置开发服务器
+  devServer: {
+    hot: true // 启动热更新
+  },
+  plugins: [
+    new webpack.HotModuleReplacementPlugin()  // 使用热更新插件
+  ]
+});
+// 3. webpack.prod.js
+const common = require("./webpack.common"); // 导入公共配置
+const webpack = require("webpack"); // 引入webpack插件
+const { CleanWebpackPlugin } = require("clean-webpack-plugin"); // 引入清除目录的插件
+const CopyWebpackPlugin = require("copy-webpack-plugin"); // 引入拷贝目录的插件
+const { merge } = require("webpack-merge"); // 合并webpack配置
+// 3. webpack的生产环境配置
+module.exports = merge(common, {
+  mode: "production",   // 生产环境模式
+  devtool: "none",      // 关闭 source map
+  plugins: [
+    new CleanWebpackPlugin(), // 清空打包目录
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: "src/public", //  输入目录
+          to: "public", // 输出目录
+        },
+      ],
+    })
+  ]
+});
+// 4. package.json
+"scripts": {
+  "build": "webpack --config webpack.prod.js",      // 生产环境打包
+  "dev": "webpack-dev-server --config webpack.dev.js"   // 开发环境调试
+}
+``` 
+
+### 1.1.27 define-plugin      (优化配置1)
+ 
 webpack 自带的插件，定义全局变量
 
 ```js
 // 1. 配置 webpack.config.js
-import webpack = require("webpack");
+const path = require("path"); // node的核心模块 path
+const webpack = require("webpack"); // webpack自带的插件
 module.exports = {
+  mode: "none", // development 开发模式   production 生产模式 (默认模式:会压缩js)
+  entry: "./src/index.js", // 入口文件
+  // 打包目录
+  output: {
+    path: path.resolve(__dirname, "dist"), // 绝对路劲
+    filename: "index.js", // 打包之后的文件名称
+    // publicPath: "dist/", // 设置加载资源模块的公共路劲(前缀路劲)
+  },
   plugins: [
     new webpack.DefinePlugin({
-      // 值要求的是一个代码片段   可以用来设置环境变量
+      // 注意打包之后变量就不存在了，他把我们注入成员的值直接替换到代码当中。
+      // 值要求的是一个代码片段   可以用来设置环境变量    
       API_BASE_URL: JSON.stringify("https://api.example.com"),
       // process.env 命令行中设置的参数
       NODE_ENV: JSON.stringify(process.env.NODE_ENV),
@@ -1025,18 +1462,193 @@ console.log(BUILD_ENV);
 
 ```
 
-### 1.1.28 tree-shaking
+### 1.1.28 tree-shaking     (优化配置2)
 
-### 1.1.29 tree-shaking-babel
+tree-shaking 摇掉代码中未引用部分
+- 未引用代码 (dead-code)
 
-### 1.1.30 side-effects
+``` js
+// 1. common.js
+// 导出add方法
+export const add = (a, b) => {
+    console.log("执行add方法");
+    return a + b;
+    console.log("未引用代码");
+}
+// 导出minus方法
+export const minus = (a, b) => {
+    console.log("执行minus方法");
+    return a - b;
+    console.log("未引用代码");
+}
+// 2. index.js
+import { add } from "./common";
+// import { add } from "./common"; 这种方式引入的 
+// tree shaking 会将common.js中未用到的代码剔除掉
+console.log(add(1, 2));
+// 3. package.json
+"scripts": {
+  "build": "webpack --mode production",   // tree shaking 在生产模式下会自动开启
+  "none": "webpack --mode none" // 不会开启 tree shaking
+}
+// 4. 执行 yarn build
+// index.js中未引入的common.js中的代码会剔除掉
 
-### 1.1.31 multiple-entry
+// 5. 执行 yarn none
+// index.js中引入的common.js中的代码不会剔除掉
+```
 
-### 1.1.32 split-chunks
+执行yarn build的结果图  (tree shaking)
+ ![avatar](../images/task2/tree-shaking1.png)
+执行yarn none的效果图   (no tree shaking)
+ ![avatar](../images/task2/tree-shaking2.png)
 
-### 1.1.33 dynamic-import
+Tree Shaking
+- Tree Shaking 不是指莫个配置选项
+- 是一组功能搭配使用后的优化效果
 
-### 1.1.34 mini-css-extract-plugin
+生成环境下会自动启用 （mode为production） 
 
-### 1.1.35 subsitution
+使用none模式怎么开启 tree shaking  (手动开启tree shaking)
+- usedExports 负责标记 枯树叶
+- minimize 负责 摇掉 它们
+``` js
+// 1. webpack.config.js
+module.exports = {
+   // 配置优化项
+  optimization: {
+    // mode为production会自动开启以下两个配置
+    usedExports: true,   // 只导出外部使用的成员
+    minimize: true    // 开启代码压缩功能，压缩没有使用过的代码
+  },
+}
+```
+
+
+### 1.1.29 concatenateModules   (优化配置3)
+
+concatenateModules的作用  
+- 尽可能的将所有模块合并输出到一个函数中,既提升了运行效率，又减少了代码的体积
+
+``` js
+// webpack.config.js 配置
+module.exports = {
+  optimization: {
+    // 尽可能的将所有模块合并输出到一个函数中,既提升了运行效率，又减少了代码的体积  (Scope Hoisting 作用域提升)
+    concatenateModules: true,  
+  },
+}
+```
+
+### 1.1.30 tree-shaking-babel   (面试，扩展)
+Tree Shaking 前提是 ES Modules 组织我们的代码 
+- 也就是 import {xx} from "模块"
+- 由 Webpack 打包的代码必须使用 ESM
+
+为了转换代码中的 ECMAScript 新特性 很多使用会使用  babel-loader 处理我们的js
+- babel 可能会 将 ES Modules -> CommonJS  (取决于有没有转化成CommonJS的插件)
+- @babel/preset-env就有这么一个插件，将ES Modules -> CommonJS
+- @babel/preset-env最新的版本已经禁用掉将ES Modules -> CommonJS的功能了
+- 为了测试，我们这里强制将@babel/preset-env设置我们的代码转换成commonjs
+``` js
+module.exports = {
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+          presets: [
+              // 强制将@babel/preset-env设置将我们的代码转换成commonjs
+              // 如果 Babel 加载模块时已经转换了 ESM，则会导致 Tree Shaking 失效
+              // ['@babel/preset-env', { modules: 'commonjs' }]
+              // ['@babel/preset-env', { modules: false }]
+              // 也可以使用默认配置，也就是 auto，这样 babel-loader 会自动关闭 ESM 转换
+              // 为了确保不会转换成commonjs，导致tree shkaing失效，在这里设置modules:false
+              ['@babel/preset-env', { modules: 'commonjs' }]
+            ]
+          }
+        },
+      },
+    ],
+  },
+  // 配置优化项
+  optimization: {
+    // 只导出外部使用的成员
+    usedExports: true,            
+    // 开启代码压缩功能，压缩没有使用过的代码
+    // minimize: true
+    // 尽可能的将所有模块合并输出到一个函数中,既提升了运行效率
+    // concatenateModules: true, 
+  },
+}
+```
+- 将@babel/preset-env设置我们的代码转换成commonjs之后我们usedExports就失效了。 即便我们开启 minimize: true 压缩代码，tree shaking也失效了。
+
+综上所述：
+- Tree Shaking 前提是 ES Modules 组织我们的代码 ，不然 Tree Shaking就会失效
+
+
+### 1.1.31 side-effects  (优化配置4)
+副作用： 模块执行时除了导出成员之外所做的事情
+- 一般用于 npm 包标记是否有副作用
+
+``` js
+// 1. add.js
+// 导出add方法
+export const add = (a, b) => {
+    console.log("执行add方法");
+    return a + b;
+    console.log("未引用代码");
+}
+// 2. minus.js
+//  导出minus方法
+export const minus = (a, b) => {
+    console.log("执行minus方法");
+    return a - b;
+    console.log("未引用代码");
+}
+// 3. commons/index.js
+// 集中导出，便于外界导入，常见的同类文件组织方式。
+export { add } from "./add";
+export { minus } from "./minus";
+// 4. index.js
+import { add } from "./commons";
+// 会出现一个问题 
+// 因为我们在这载入的是commons下的index.js，index.js中又载入了所有的组件模块
+// 这就会导致我们只想载入的add组件，但是所有的组件都会被加载执行。
+// side-effects副作用就可以解决此类问题
+console.log(add(1, 2));
+
+// 5.webpack.config.js
+module.exports = {
+   // 配置优化项
+  optimization: {
+    sideEffects: true,    // 开启这个特性 production模式下会自动开启   
+    // 只导出外部使用的成员   production模式下会自动开启
+    usedExports: true,
+    // 开启代码压缩功能，压缩没有使用过的代码   production模式下会自动开启
+    // minimize: true
+    // 尽可能的将所有模块合并输出到一个函数中,既提升了运行效率
+    // concatenateModules: true, 
+  },
+}
+// 6. package.json
+"sideEffects": false    // 代表我们的代码是没有副作用
+// 7. yarn none
+// 会把index.js中引入的common/index.js中没有引入的副作用移除掉
+```
+
+Webpack sideEffects 注意
+- 确保你的代码真的没有副作用
+
+### 1.1.32 multiple-entry
+
+### 1.1.33 split-chunks
+
+### 1.1.34 dynamic-import
+
+### 1.1.35 mini-css-extract-plugin
+
+### 1.1.36 subsitution
