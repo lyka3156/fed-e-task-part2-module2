@@ -1,0 +1,12 @@
+{
+  "name": "1-rollup-start",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "rollup": "^2.22.1"
+  },
+  "scripts": {
+    "build": "yarn rollup ./src/index.js --format iife --file dist/bundle.js"
+  }
+}

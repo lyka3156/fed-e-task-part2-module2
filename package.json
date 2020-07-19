@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "author": "lyka3156 <1210167160@qq.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "stylelint": "^13.6.1"
+  }
 }

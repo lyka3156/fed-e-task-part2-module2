@@ -1,0 +1,13 @@
+{
+  "name": "stylelint",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "stylelint": "^13.6.1",
+    "stylelint-config-sass-guidelines": "^7.0.0"
+  },
+  "dependencies": {
+    "stylelint-config-standard": "^20.0.0"
+  }
+}

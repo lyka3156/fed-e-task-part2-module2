@@ -1,0 +1,13 @@
+{
+  "name": "3-rollup-plugin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "rollup": "^2.22.1",
+    "rollup-plugin-json": "^4.0.0"
+  },
+  "scripts": {
+    "build": "yarn rollup --config"
+  }
+}

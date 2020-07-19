@@ -1,0 +1,9 @@
+{
+  "name": "1-eslint-install",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^7.5.0"
+  }
+}

@@ -496,7 +496,7 @@ document.write(footerHtml);
 
 ![avatar](../images/task2/webpack核心工作原理03.png)
 
-webpack 会根据配置找到打包入口文件，一般情况下这个文件都会是一个 js 文件，然后他会顺着我们入口文件的代码根据代码中出现的 import 或者 require 之内的语句解析推断出来这个文件所依赖的资源模块，然后分别去解析每个资源模块对应的依赖，最后形成整个项目用到文件的依赖关系的依赖树，有了这个依赖关系的依赖树之后，webpack 会递归这个依赖树，然后找到每个节点对对应的资源文件，最后根据我们配置文件的 rule 属性去找到这个模块所对应的加载器，去交个这个加载去加载这个模块，最后会将加载到的结果放到 build.js 也就是我们打包结果当中从而去实现我们整个项目的打包。(整个过程中 Loader 机制起到了很大的作用，因为没有 loader 的话，他就不能实现这种资源文件的加载，对于 webpack 来说他就只能算是去用来打包和合并 js 模块的工具了。)
+webpack 会根据配置找到打包入口文件，一般情况下这个文件都会是一个 js 文件，然后他会顺着我们入口文件的代码根据代码中出现的 import 或者 require 之内的语句解析推断出来这个文件所依赖的资源模块，然后分别去解析每个资源模块对应的依赖，最后形成整个项目用到文件的依赖关系的依赖树，有了这个依赖关系的依赖树之后，webpack 会递归这个依赖树，然后找到每个节点对对应的资源文件，最后根据我们配置文件的 rule 属性去找到这个模块所对应的加载器，去交给这个加载器去加载这个模块，最后会将加载到的结果放到 build.js 也就是我们打包结果当中从而去实现我们整个项目的打包。(整个过程中 Loader 机制起到了很大的作用，因为没有 loader 的话，他就不能实现这种资源文件的加载，对于 webpack 来说他就只能算是去用来打包和合并 js 模块的工具了。)
 
 Loader 机制是 Wepback 的核心
 
@@ -581,7 +581,7 @@ eval("// Module\nvar code = \"<h1 id=\\\"自定义一个解析-md-文件的-load
 
 plugin: 增强 webpack 自动化能力
 
-- 清楚 dist 模块
+- 清除 dist 模块
 - 拷贝静态文件至输出目录
 - 压缩输出代码
   loader: 专注实现资源模块加载
@@ -1418,7 +1418,7 @@ module.exports = merge(common, {
 }
 ``` 
 
-### 1.1.27 define-plugin      (优化配置1)
+### 1.1.27 define-plugin  定义全局变量     (优化配置1)
  
 webpack 自带的插件，定义全局变量
 
@@ -1462,7 +1462,7 @@ console.log(BUILD_ENV);
 
 ```
 
-### 1.1.28 tree-shaking     (优化配置2)
+### 1.1.28 tree-shaking 树摇晃    (优化配置2)
 
 tree-shaking 摇掉代码中未引用部分
 - 未引用代码 (dead-code)
@@ -1525,7 +1525,7 @@ module.exports = {
 ```
 
 
-### 1.1.29 concatenateModules   (优化配置3)
+### 1.1.29 concatenateModules 尽可能将多个模块合并到一个函数中  (优化配置3)
 
 concatenateModules的作用  
 - 尽可能的将所有模块合并输出到一个函数中,既提升了运行效率，又减少了代码的体积
@@ -1590,7 +1590,7 @@ module.exports = {
 - Tree Shaking 前提是 ES Modules 组织我们的代码 ，不然 Tree Shaking就会失效
 
 
-### 1.1.31 side-effects  (优化配置4)
+### 1.1.31 side-effects  副作用 (优化配置4)
 副作用： 模块执行时除了导出成员之外所做的事情
 - 一般用于 npm 包标记是否有副作用
 
@@ -1638,17 +1638,286 @@ module.exports = {
 "sideEffects": false    // 代表我们的代码是没有副作用
 // 7. yarn none
 // 会把index.js中引入的common/index.js中没有引入的副作用移除掉
+
+// 8. 副作用代码    
+// 为 Number 的原型添加一个扩展方法 
+Number.prototype.pad = function (size) {
+    let result = this + "";
+    while (result.length < size) {
+        result = "0" + result;
+    }
+    return result;
+}
+// import "./extends";
+// 因为这个模块没有到处任何成员，所以不要提取任何成员
+// 引入这个文件的时候没有引用pad方法，他是定义在Number原型上的
+// 像这种为Number做扩展的操作就属于extends模块的副作用
+// 因为在导入模块的时候会为number添加一个方法
+// 那此时我们还标识项目中的代码没有副作用的话，那上面这个副作用的代码将不会被打包进去
+// 9. index.js
+import "./extends"; // 都是副作用模块
+import "./style";   // 都是副作用模块
+// 10. 解决上面的办法是 
+// 10.1 在package.json 中关闭  sideEffects:true
+// 10.2 在package.json 中标识哪些模块有副作用的，这样webpack打包的时候就不会忽略这些有副作用的模块   
+// package.json
+"sideEffects": [
+    "./src/extends.js",
+    "*.css"
+]
 ```
 
 Webpack sideEffects 注意
-- 确保你的代码真的没有副作用
+- 确保你的代码真的没有副作用    
+``` js
+// 1. webpack.config.js
+module.exports = {
+  optimization: {
+    sideEffects: true,    // 开启这个特性 production模式下会自动开启   
+  },
+}
+// 2. pacage.json
+"sideEffects": false    // 把所有的副作用都剔除掉，不打包到项目中
+```
+- 如果你的代码有副作用，并且这些副作用用的到的，例如 css文件,那就设置如下方式
+```js
+// 1. webpack.config.js
+module.exports = {
+  optimization: {
+    sideEffects: true,    // 开启这个特性 production模式下会自动开启   
+  },
+}
+// 2. pacage.json
+"sideEffects": [        // 以下这些模块的副作用会被打包进去，不会剔除掉
+    "./src/extends.js",
+    "*.css"
+]
+```
 
-### 1.1.32 multiple-entry
+### 1.1.32 multiple-entry   多入口打包  
+多入口打包
+- 多页引用程序
+  - entry 为对象形式
+- 一个页面对应一个打包入口
+  - 使用chunks指定打包入口
+``` js
+const path = require("path"); // node的核心模块 path
+const HtmlWebpackPlugin = require("html-webpack-plugin"); // html模板插件
 
-### 1.1.33 split-chunks
+module.exports = {
+  mode: "none", // none 源代码模式
+  entry: {    // 入口文件
+    index: "./src/index.js",
+    about: "./src/about.js"
+  },
+  // 打包目录
+  output: {
+    path: path.resolve(__dirname, "dist"), // 绝对路劲
+    filename: "[name].js", // 打包之后的文件名称
+  },
+  // 模块
+  module: {
+    rules: [
+      // 匹配 css 文件，并通过css-loader模块转换成js模块
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"],
+      },
+    ],
+  },
+  // 插件
+  plugins: [
+    // HtmlWebpackPlugin 通过html模板生成html  默认会将所有入口文件插入到生成的html中
+    new HtmlWebpackPlugin({
+      title: "首页", // 标题
+      template: "./src/index.html", // html模块路劲
+      filename: "index.html", // 输出名称
+      chunks: ["index"]     // 默认是将所有的打包js引入，可以指定你需要的入口js文件
+    }),
+    new HtmlWebpackPlugin({
+      title: "about", // 标题
+      template: "./src/about.html", // html模块路劲
+      filename: "about.html", // 输出名称
+      chunks: ["about"] // 默认是将所有的打包js引入，可以指定你需要的入口js文件
+    }),
+  ],
+};
+```
 
-### 1.1.34 dynamic-import
+### 1.1.33 split-chunks 代码分隔  (优化配置5)
+多入口打包，不同入口中肯定会有公共模块
 
-### 1.1.35 mini-css-extract-plugin
+例如下面两个文件都引入了global.css
+``` js
+// index.js
+import "./global.css";
+import "./index.css";
+// about.js
+import "./global.css";
+import "./about.css";
+// 使用optimization提取模块的公共部分
+module.exports = {
+  // 配置优化项
+  optimization: {
+    // 分隔模块的配置
+    splitChunks: {
+      chunks: "all"   // 提取所有模块的公共部分
+    }
+  }
+}
+// 最后使用yarn build
+// 打包之后的文件会多生成一个文件存取公共部分
+```
 
-### 1.1.36 subsitution
+### 1.1.34 dynamic-import 按需加载   (优化配置6)
+按需加载
+- 需要用到莫个模块时，再加载这个模块
+- 极大减少了我们的带宽和流量 
+
+webpack 支持动态导入的方式实现按需加载
+
+所有动态导入的模块会被自动分包
+
+``` js
+// index.js
+// import posts from './posts/posts'            // 这是静态导入
+// 动态导入
+import(/* webpackChunkName: 'components' */'./posts/posts').then(({ default: posts }) => {
+    mainElement.appendChild(posts())
+})
+```
+
+如果你使用的是单页引用开发框架，比如vue,react，那在你项目中的路由映射组件可以通过这种动态导入的方式实现按需加载。
+
+魔法注释  
+- 给分包产生的bundle文件起名字
+- /* webpackChunkName: 'components' */
+- 如果你导入导入的chunk是一样的就可以设置同一个注释名，他就会打包到一起了。
+``` js
+// 1. 分包打bundle
+/* webpackChunkName: 'commponent1' */
+/* webpackChunkName: 'commponent2' */
+// 打包之后的文件: commponent1,commponent2,commponent1~commponent2
+
+// 2. 将分包打的bundle放一起
+/* webpackChunkName: 'commponent' */
+/* webpackChunkName: 'commponent' */
+// 打包之后的文件: commponents
+```
+
+### 1.1.35 mini-css-extract-plugin  提取CSS到单个文件   (优化配置7)
+
+提取CSS到单个文件
+``` js
+// webpack.config.js
+const path = require("path"); // node的核心模块 path
+
+const { CleanWebpackPlugin } = require("clean-webpack-plugin"); // 引入清除输出目录的插件
+const HtmlWebpackPlugin = require("html-webpack-plugin"); // html模板插件
+const MiniCssExtractPlugin = require("mini-css-extract-plugin"); // 提取css文件到一个单独的文件当中
+
+module.exports = {
+  mode: "none", // 源代码模式
+  entry: "./src/index.js", // 入口文件
+  // 打包目录
+  output: {
+    path: path.resolve(__dirname, "dist"), // 绝对路劲
+    filename: "index.js", // 打包之后的文件名称
+  },
+  // 模块
+  module: {
+    rules: [
+      // 匹配 css 文件，并通过css-loader模块转换成js模块
+      {
+        test: /\.css$/,
+        use: [
+          // "style-loader",   // 将样式通过style标签注入    开发模式用
+          MiniCssExtractPlugin.loader,  // 将样式通过link标签注入 生产环境用
+          "css-loader"
+        ],
+      },
+    ],
+  },
+  // 插件
+  plugins: [
+    new CleanWebpackPlugin(),
+    // HtmlWebpackPlugin 通过html模板生成html  默认会将所有入口文件插入到生成的html中
+    new HtmlWebpackPlugin({
+      title: "首页", // 标题
+      template: "./src/index.html", // html模块路劲
+      filename: "index.html", // 输出名称
+    }),
+    new MiniCssExtractPlugin()
+  ],
+};
+```
+
+当css文件大于150kb才需要考虑是否将他提取到单独的文件当中，否则的话其实css嵌入到代码当中它减少一次请求效果可能会更好
+
+### 1.1.37 optimize-css-assets-webpack-plugin 压缩css文件  (优化配置8)
+
+webpack的production模式默认只压缩js文件，我们要压缩css需要单独的插件
+
+``` js
+// 1. 安装插件
+yarn add optimize-css-assets-webpack-plugin -D
+// 2. webpack.config.js
+const OptimizeCssAssetsWebpackPlugin = require("optimize-css-assets-webpack-plugin");  // 压缩css的插件
+
+module.exports = {
+  // 优化项配置
+  optimization: {
+    // webpack建议将这种压缩内的插件配置在minimizer当中，以便于我们通过minimizer这个选项去统一控制
+    minimizer: [
+      new OptimizeCssAssetsWebpackPlugin()
+    ]
+  }
+}
+```
+
+一般会配置在minimizer而不是配置在plugins中，为什么？
+- 如果配置在plugins数组中，这个插件在任何情况下都会正常工作
+- 配置在minimizer当中的话只会在minimizer的特性开启时才会工作
+- webpack建议将这种压缩内的插件配置在minimizer当中，以便于我们通过minimizer这个选项去统一控制
+
+如果配置了minimizer这个数组，要自定义所使用的压缩插件，内部的js压缩器就会被覆盖掉，不会压缩js了
+- 我们需要手动配置压缩js的插件
+``` js
+// 1. 安装插件
+yarn add terser-webpack-plugin -D
+// 2. webpack.config.js
+const TerserWebpackPlugin = require("terser-webpack-plugin");  // 压缩js的插件
+
+module.exports = {
+  // 优化项配置
+  optimization: {
+    // webpack建议将这种压缩内的插件配置在minimizer当中，以便于我们通过minimizer这个选项去统一控制
+    minimizer: [
+      new OptimizeCssAssetsWebpackPlugin(),
+      new TerserWebpackPlugin()
+    ]
+  }
+}
+```
+
+### 1.1.38  输出文件名 Hash  
+生成模式下，文件名使用 Hash 防止缓存
+
+hash的3种声明方式
+``` js
+// 1. hash 项目级别的   只要项目任意改动，hash都会改变
+{
+  filename: "[name]-[hahs:8]"   // 项目级别的
+}
+// 2. chunkhash     同一个chunk的hash才会改变   解决缓存的最好方式
+{
+  filename: "[name]-[chunkhash:8]"   // chunk级别的
+}
+// 3. contenthash     不同的文件会有不同的hash值
+{
+  filename: "[name]-[contenthash:len]"   // chunk级别的
+}
+```
+
+
+
