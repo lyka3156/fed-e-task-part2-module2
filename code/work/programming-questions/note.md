@@ -6,7 +6,8 @@
 yarn add webpack webpack-cli file-loader url-loader style-loader css-loader less less-loader
 webpack-dev-server clean-webpack-plugin copy-webpack-plugin webpack-merge babel-loader
 @babel/core @vue/cli-plugin-babel html-webpack-plugin mini-css-extract-plugin vue-loader  
-vue-template-compiler  terser-webpack-plugin optimize-css-assets-webpack-plugin -D
+vue-template-compiler  terser-webpack-plugin optimize-css-assets-webpack-plugin 
+eslint babel-eslint eslint-loader eslint-plugin-vue prettier -D
 ```
 
 ## 1.2 将公共webpack配置提取出来
@@ -14,6 +15,7 @@ vue-template-compiler  terser-webpack-plugin optimize-css-assets-webpack-plugin 
 - entry入口文件
 - output打包目录
 - module
+    - eslint-loader 检查js或者vue文件是否有问题
     - vue-loader加载器将vue模块转换为js模块
     - babel-loader加载器将js新特性转换为浏览器能执行的js代码
 - plugins
@@ -37,6 +39,12 @@ module.exports = {
     // 模块
     module: {
         rules: [
+            {
+                test: /\.(js|vue)$/,
+                loader: "eslint-loader",
+                enforce: "pre",
+                exclude: /node_modules/,
+            },
             {
                 test: /\.vue$/,
                 loader: "vue-loader",
@@ -216,4 +224,14 @@ module.exports = merge(common, {
         usedExports: true,  // 只使用导入的
     }
 });
+```
+
+## 1.5 在package.json中配置运行脚本
+``` js
+"scripts": {
+    "serve": "webpack-dev-server --config webpack.dev.js",      // 启动开发服务器
+    "build": "webpack --config webpack.prod.js",                // 打包环境
+    "lint": "eslint --ext .js src",                             // 使用eslint校验 js文件
+    "prettier": "prettier --write  \"./**/*.{js,jsx,css,less,md,json}\""        // 格式化代码并且覆盖掉之前的代码
+},
 ```
